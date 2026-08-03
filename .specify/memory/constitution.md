@@ -34,6 +34,6 @@ Development efforts shall focus on creating autonomous data ingestion jobs. The 
 
 ## Governance
 
-All information presented must be audited for compliance with the principle of Verifiable Truth. Automated validation/linting should be implemented to check for clearly distinguishable truth claims in data outputs.
+All information presented must be audited for compliance with the principle of Verifiable Truth. Automated validation/linting should be implemented to check for clearly distinguishable truth claims in data outputs. Any amendment to a Core Principle MUST be accompanied by a corresponding update to the operational instructions in `AGENTS.md` to ensure agent compliance.
 
 **Version**: 1.0.0 | **Ratified**: 2026-08-02 | **Last Amended**: 2026-08-02
