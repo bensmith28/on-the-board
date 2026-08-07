@@ -56,7 +56,7 @@ This specification was derived from the following source documents:
 
 - **FR-001**: The system MUST provision a PostgreSQL database instance configured with the `pgvector` extension enabled.
 - **FR-002**: The database MUST support JSONB columns for flexible, source-specific payload storage.
-- **FR-003**: The database MUST support VECTOR column type for semantic embedding storage (reserved for Phase 3).
+- **FR-003**: The database MUST support a VECTOR(1536) column for semantic embedding storage (reserved for Phase 3).
 - **FR-004**: Database connection configuration MUST be externalized via environment variables or a configuration file, not hardcoded.
 
 ### 3.2 Schema: `ingested_records` Table
@@ -70,8 +70,8 @@ This specification was derived from the following source documents:
   - `source_url` (TEXT, Mandatory): The original URL from which the data was extracted.
   - `point_of_origin` (TEXT, Mandatory): Specific page number, section header, or timestamp within the source.
   - `payload` (JSONB): The flexible, source-specific content.
-  - `embedding` (VECTOR(n), Reserved): Semantic vector column for Phase 3 similarity search.
-- **FR-006**: The `ingested_records` table MUST support UPSERT operations keyed on (`source_url`, `point_of_origin`) to handle duplicate ingestion gracefully.
+  - `embedding` (VECTOR(1536), NULL, Reserved): Semantic vector column for Phase 3 similarity search.
+- **FR-006**: The `ingested_records` table MUST support UPSERT operations keyed on (`source_url`, `point_of_origin`) to handle duplicate ingestion gracefully. On conflict, `payload`, `ingestion_timestamp`, and `timestamp` MUST be updated with the new values; all other columns retain their existing values.
 - **FR-007**: Indexes MUST be created on `source_type`, `locality`, `timestamp`, and `source_type + locality` composite for query performance.
 
 ### 3.3 Schema: `sources_registry` Table
@@ -79,9 +79,13 @@ This specification was derived from the following source documents:
 - **FR-008**: The `sources_registry` table MUST contain the following columns:
   - `id` (UUID, Primary Key): Unique identifier for each registered source.
   - `name` (VARCHAR): Human-readable name (e.g., "Town Board Minutes").
+  - `source_type` (VARCHAR(50)): Identifier for the adapter type (e.g., `meeting_minutes`, `press_release`).
+  - `locality` (VARCHAR(100)): The municipality/entity the adapter serves (e.g., `Victor, NY`).
   - `config` (JSONB): Adapter-specific configuration parameters (CSS selectors, API endpoints, base URLs, parsing strategy).
   - `last_run` (TIMESTAMPTZ): Timestamp of the last successful execution.
   - `status` (VARCHAR): Current state of the adapter (`active`, `failed`, `maintenance`).
+  - `created_at` (TIMESTAMPTZ): Record creation timestamp, defaults to now().
+  - `updated_at` (TIMESTAMPTZ): Record last-updated timestamp, defaults to now().
 - **FR-009**: The `sources_registry` table MUST serve as the single source of truth for adapter discovery and orchestration.
 - **FR-010**: New adapters MUST be registered in `sources_registry` before they can be discovered and executed by the orchestrator.
 
@@ -93,7 +97,7 @@ This specification was derived from the following source documents:
   - `raw_text` (Text): Full, unformatted text extracted from the source.
   - `metadata` (JSONB): Source-specific key-value pairs (e.g., board name, agenda link, channel ID).
   - `related_resources` (Array of Objects): Resource pointers, each with its own `source_url` and `point_of_origin`.
-- **FR-012**: The `source_url` and `point_of_origin` fields MUST be validated as present before any database write. Records missing mandatory evidence MUST be rejected and logged.
+- **FR-012**: The `source_url` and `point_of_origin` fields MUST be validated per VR-001 and VR-002 before any database write. Records failing any validation rule (VR-001 through VR-007) MUST be rejected and logged.
 - **FR-013**: The `payload` JSONB structure MUST be validated against the defined contract before ingestion.
 
 ### 3.5 SQLModel Entity Definitions
@@ -102,11 +106,25 @@ This specification was derived from the following source documents:
 - **FR-015**: Models MUST enforce type constraints matching the schema definitions in FR-005 and FR-008.
 - **FR-016**: The `payload` field MUST be typed as JSONB in the model definition.
 
-### 3.6 Verification
+### 3.7 Validation Rules
 
-- **FR-017**: A manual verification procedure MUST be provided to query the database and confirm that JSONB payload structure matches the `IngestionResult` specification.
-- **FR-018**: Verification MUST confirm that all mandatory evidence fields (`source_url`, `point_of_origin`) are populated for every ingested record.
-- **FR-019**: Verification MUST confirm that `sources_registry` correctly reflects adapter status and last-run timestamps.
+Every `IngestionResult` MUST satisfy the following validation rules before a database write. Rules are enforced by the `validate_ingestion_result()` function in `src/ingestion/validator.py`.
+
+Records failing any rule MUST be rejected with a descriptive error identifying the failed rule.
+
+- **VR-001**: `source_url` MUST be a non-empty, valid URL string.
+- **VR-002**: `point_of_origin` MUST be a non-empty string.
+- **VR-003**: `payload.title` MUST be a non-empty string.
+- **VR-004**: `payload.content_summary` MUST be a non-empty string.
+- **VR-005**: `payload.raw_text` MUST be a non-empty string.
+- **VR-006**: `payload.metadata` MUST be a non-null object/dict.
+- **VR-007**: `payload.related_resources` MUST be a non-null list/array.
+
+### 3.8 Verification Tests
+
+- **FR-017**: A test file `tests/integration/test_verification.py` MUST contain automated checks that verify JSONB payload structure matches the `IngestionResult` specification (all five required keys present).
+- **FR-018**: Verification tests MUST confirm that `source_url` and `point_of_origin` are non-empty for every ingested record (via SQL `WHERE source_url IS NULL OR source_url = ''` or equivalent).
+- **FR-019**: Verification tests MUST confirm that `sources_registry` entries have valid `status` values (one of: `active`, `failed`, `maintenance`) and non-null `last_run` timestamps for active adapters.
 
 ## 4. Success Criteria
 
@@ -142,9 +160,13 @@ This specification was derived from the following source documents:
 |:---|:---|:---|:---|
 | `id` | UUID | PK, NOT NULL | Unique registry entry identifier |
 | `name` | VARCHAR | NOT NULL | Human-readable adapter name |
+| `source_type` | VARCHAR(50) | NOT NULL | Adapter type identifier |
+| `locality` | VARCHAR(100) | NOT NULL | Municipality/entity the adapter serves |
 | `config` | JSONB | NOT NULL | Adapter configuration parameters |
 | `last_run` | TIMESTAMPTZ | NULL | Last successful execution timestamp |
 | `status` | VARCHAR | NOT NULL, default `active` | Adapter state (`active`, `failed`, `maintenance`) |
+| `created_at` | TIMESTAMPTZ | NOT NULL, default now() | Record creation timestamp |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | Record last-updated timestamp |
 
 ### 5.3 `IngestionResult` (Data Contract)
 

@@ -90,7 +90,7 @@ Based on the project's core principles (from `AGENTS.md` and the project constit
 
 **GATE STATUS**: All principles satisfied. No violations requiring complexity tracking.
 
-*GATE: Before marking implementation as COMPLETED, verify that the `docs/specifications/` folder is updated to reflect the current implementation (Single Source of Truth).*
+*GATE: Before marking implementation as COMPLETED, `docs/specifications/` MUST be updated to reflect the current implementation (Single Source of Truth per constitution). This is a blocking gate — implementation cannot be marked complete until this gate passes.*
 
 ## Project Structure
 

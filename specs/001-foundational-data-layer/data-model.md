@@ -194,4 +194,20 @@ CREATE INDEX idx_ingested_source_type_locality ON ingested_records (source_type,
 CREATE UNIQUE INDEX idx_sources_type ON sources_registry (source_type);
 CREATE INDEX idx_sources_locality ON sources_registry (locality);
 CREATE INDEX idx_sources_status ON sources_registry (status);
+
+-- UPSERT helper function (enforces FR-006 UPSERT behavior)
+CREATE OR REPLACE FUNCTION upsert_ingested_record(
+    p_source_type VARCHAR, p_locality VARCHAR, p_timestamp TIMESTAMPTZ,
+    p_source_url TEXT, p_point_of_origin TEXT, p_payload JSONB
+) RETURNS VOID AS $$
+BEGIN
+    INSERT INTO ingested_records (source_type, locality, timestamp, source_url, point_of_origin, payload, ingestion_timestamp)
+    VALUES (p_source_type, p_locality, p_timestamp, p_source_url, p_point_of_origin, p_payload, now())
+    ON CONFLICT (source_url, point_of_origin) DO UPDATE SET
+        payload = EXCLUDED.payload,
+        ingestion_timestamp = EXCLUDED.ingestion_timestamp,
+        timestamp = EXCLUDED.timestamp,
+        updated_at = now();
+END;
+$$ LANGUAGE plpgsql;
 ```

@@ -27,9 +27,13 @@ The primary table stores all incoming data from various adapters.
 Tracks the configuration and status of active adapters.
 * `id`: UUID (PK)
 * `name`: VARCHAR (e.g., "Town Board Minutes")
+* `source_type`: VARCHAR(50) (e.g., `meeting_minutes`, `press_release`)
+* `locality`: VARCHAR(100) (e.g., `Victor, NY`)
 * `config`: JSONB (Contains CSS selectors, API endpoints, etc.)
 * `last_run`: TIMESTAMPTZ
 * `status`: VARCHAR (e.g., `active`, `failed`, `maintenance`)
+* `created_at`: TIMESTAMPTZ (defaults to now())
+* `updated_at`: TIMESTAMPTZ (defaults to now())
 
 ## Data Contract: The Ingestion Result
 To ensure the "Contract instead of configurability" principle, all adapters must return a standardized object that satisfies the following schema when writing to the `payload` column of `ingested_records`.
