@@ -6,9 +6,9 @@ This document outlines the phased implementation strategy for the `on-the-board`
 **Goal**: Validate the entire data lifecycle using the most complex component (Meeting Minutes Adapter).
 
 ### 1.1 Foundational Data Layer
-- [ ] **Storage Implementation**: Set up PostgreSQL with `pgvector` extension.
-- [ ] **Schema Definition**: Implement `ingested_records` and `sources_registry` tables using SQLModel.
-- [ ] **Verification**: Manual query to ensure JSONB payload structure matches the specification.
+- [x] **Storage Implementation**: Set up PostgreSQL with `pgvector` extension.
+- [x] **Schema Definition**: Implement `ingested_records` and `sources_registry` tables using SQLModel.
+- [x] **Verification**: Manual query to ensure JSONB payload structure matches the specification.
 
 ### 1.2 The "Type B" Adapter (Meeting Minutes)
 - [ ] **Browser Automation**: Implement Playwright logic for navigating the CivicPlus Agenda Center JavaScript interface.
