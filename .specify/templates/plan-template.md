@@ -41,6 +41,7 @@
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 [Gates determined based on constitution file]
+*GATE: Before marking implementation as COMPLETED, verify that the `docs/specifications/` folder is updated to reflect the current implementation (Single Source of Truth).*
 
 ## Project Structure
 
