@@ -10,7 +10,7 @@ description: "Task list for Meeting Minutes & Agendas Adapter implementation"
 **Input**: Design documents from `/specs/002-meeting-minutes-adapter/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/ (adapter-context.md, error-signal.md, ingestion-result.md)
 
-**Tests**: Not explicitly requested in the feature specification. Test tasks are omitted.
+**Tests**: Test tasks included in Phase 8 below.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -33,8 +33,8 @@ description: "Task list for Meeting Minutes & Agendas Adapter implementation"
 - [ ] T001 Create adapter directory structure: `adapters/meeting_minutes/`, `adapters/shared/`, `tests/adapters/meeting_minutes/`
 - [ ] T002 Create `adapters/meeting_minutes/__init__.py` with module metadata
 - [ ] T003 Create `adapters/__init__.py` and `adapters/shared/__init__.py`
-- [ ] T004 Create `pyproject.toml` with dependencies: playwright, pymupdf, httpx, python-json-logger, asyncpg or psycopg
-- [ ] T005 Create `adapters/meeting_minutes/__main__.py` for CLI invocation via `python -m adapters.meeting_minutes.adapter`
+- [ ] T004 Create `pyproject.toml` with dependencies: playwright, pymupdf, httpx, python-json-logger, asyncpg
+- [ ] T005 Create `adapters/meeting_minutes/__main__.py` for CLI invocation via `python -m adapters.meeting_minutes`
 
 ---
 
@@ -44,9 +44,9 @@ description: "Task list for Meeting Minutes & Agendas Adapter implementation"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 [P] Implement shared retry module with decorator in `adapters/shared/retry.py`
+- [ ] T006 [P] Implement shared retry module with decorator in `adapters/shared/retry.py`: configurable attempts (default 3), exponential backoff (1s, 2s, 4s base), randomized jitter, retry-able exception types
 - [ ] T007 [P] Implement shared structured JSON logging utilities in `adapters/shared/logging.py`
-- [ ] T008 [P] Create data models in `adapters/meeting_minutes/models.py`: DocumentInfo, IngestionResult, ErrorSignal dataclasses
+- [ ] T008 [P] Create data models in `adapters/meeting_minutes/models.py`: DocumentInfo, IngestionResult, ErrorSignal dataclasses; add `extraction_timestamp: datetime` field to IngestionResult per Ingestion Policy Mandatory Evidence Mapping
 - [ ] T009 [P] Create adapter configuration module in `adapters/meeting_minutes/config.py`: config schema parsing, defaults, validation
 - [ ] T010 Create CLI entry point with argument parsing in `adapters/meeting_minutes/adapter.py`: --locality, --config, --last-run-timestamp flags
 
@@ -66,7 +66,7 @@ description: "Task list for Meeting Minutes & Agendas Adapter implementation"
 - [ ] T012 [P] [US1] Implement PDF text extraction module in `adapters/meeting_minutes/pdf_parser.py`: download PDF via httpx, extract full text via PyMuPDF, parse meeting date/title with flexible regex, produce content_summary
 - [ ] T013 [US1] Implement core adapter orchestration in `adapters/meeting_minutes/adapter.py`: wire browser + parser together, iterate discovered documents, produce IngestionResult payloads, write to `ingested_records` via PostgreSQL
 - [ ] T014 [US1] Add structured JSON logging for per-document output (title, source_url, status, duration_ms) and run summary (documents_discovered, documents_ingested, documents_skipped, documents_failed, total_duration_ms) in `adapters/meeting_minutes/adapter.py`
-- [ ] T015 [US1] Implement mandatory evidence mapping: ensure every record has non-empty `source_url` (from related_resources) and `point_of_origin` (PDF filename or date-based identifier) in `adapters/meeting_minutes/adapter.py`
+- [ ] T015 [US1] Implement mandatory evidence mapping: ensure every record has non-empty `source_url` (from related_resources), `point_of_origin` (PDF filename or date-based identifier), and `extraction_timestamp` (UTC time of extraction) in `adapters/meeting_minutes/adapter.py`
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently — a single manual execution successfully ingests meeting minutes from the Agenda Center.
 
@@ -74,16 +74,16 @@ description: "Task list for Meeting Minutes & Agendas Adapter implementation"
 
 ## Phase 4: User Story 2 - Incremental Ingestion (Priority: P2)
 
-**Goal**: Adapter correctly identifies new documents on a second run by comparing against `sources_registry`, processing zero records when no new documents exist, and updating `last_run_timestamp`.
+**Goal**: Adapter correctly identifies new documents on a second run by comparing against `sources_registry`, processing zero records when no new documents exist, and updating `last_run`.
 
 **Independent Test**: Run the adapter twice with the same source; the second run should log zero documents ingested and update `sources_registry.last_run` to a new timestamp.
 
 ### Implementation for User Story 2
 
-- [ ] T016 [US2] Implement `last_run_timestamp` consumption from sources_registry and incremental scan logic in `adapters/meeting_minutes/browser.py`
+- [ ] T016 [US2] Implement `last_run` consumption from sources_registry and incremental scan logic in `adapters/meeting_minutes/browser.py`
 - [ ] T017 [US2] Implement URL deduplication against `sources_registry` to identify new, previously unrecorded PDF links in `adapters/meeting_minutes/adapter.py`
 - [ ] T018 [US2] Implement stop conditions: halt scanning after 5 consecutive already-recorded documents OR 365 days into the past in `adapters/meeting_minutes/adapter.py`
-- [ ] T019 [US2] Implement `last_run_timestamp` update in `sources_registry` after each successful run in `adapters/meeting_minutes/adapter.py`
+- [ ] T019 [US2] Implement `last_run` update in `sources_registry` after each successful run in `adapters/meeting_minutes/adapter.py`
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently — the adapter performs both full and incremental ingestion correctly.
 
@@ -97,10 +97,11 @@ description: "Task list for Meeting Minutes & Agendas Adapter implementation"
 
 ### Implementation for User Story 3
 
-- [ ] T020 [P] [US3] Implement retry decorator with exponential backoff (1s, 2s, 4s) and randomized jitter in `adapters/shared/retry.py`
+- [ ] T020 [P] [US3] Integrate retry module (T006) into browser navigation and PDF parsing: apply decorator to browser navigation methods and PDF download calls, configure retry-able exceptions (ConnectionError, TimeoutError), log retry attempts
 - [ ] T021 [P] [US3] Extend ErrorSignal model in `adapters/meeting_minutes/models.py` with persistent failure alerting logic (3 consecutive failures per source)
-- [ ] T022 [US3] Integrate retry logic into browser navigation and PDF parsing operations in `adapters/meeting_minutes/adapter.py`
-- [ ] T023 [US3] Implement randomized delays between requests for rate limiting compliance on the CivicPlus platform in `adapters/meeting_minutes/browser.py`
+- [ ] T022 [US3] Implement persistent failure state tracking in `adapters/meeting_minutes/adapter.py`: persist consecutive failure count to `sources_registry` or local state file, trigger alert via Core Engine error-handling system after 3 consecutive failures per source
+
+ - [ ] T023 [US3] Implement randomized delays between requests for rate limiting compliance on the CivicPlus platform in `adapters/meeting_minutes/browser.py`
 
 **Checkpoint**: All user stories 1 through 3 should now be independently functional — the adapter is robust against transient failures and gracefully handles permanent ones.
 
@@ -126,9 +127,24 @@ description: "Task list for Meeting Minutes & Agendas Adapter implementation"
 
 **Purpose**: Improvements that affect multiple user stories and final validation
 
-- [ ] T027 [P] Update `docs/specifications/` to reflect the current implementation (Single Source of Truth compliance)
-- [ ] T028 Validate implementation against all quickstart.md scenarios (Scenarios 1-8)
-- [ ] T029 Code cleanup: remove debug output, add type hints, ensure consistent error messages
+- [ ] T027 [P] Verify `docs/specifications/` matches the current implementation (Single Source of Truth compliance gate)
+- [ ] T028 [P] If verification fails, update `docs/specifications/` to reflect the current implementation
+- [ ] T029 Validate implementation against all quickstart.md scenarios (Scenarios 1-8)
+- [ ] T031 Code cleanup: remove debug output, add type hints, ensure consistent error messages
+
+---
+
+## Phase 8: Testing
+
+**Purpose**: Unit and integration tests for all user stories
+
+- [ ] T032 [P] Create `tests/adapters/meeting_minutes/conftest.py` with shared fixtures (mock browser, mock DB, temp PDFs)
+- [ ] T033 [P] Implement `tests/adapters/meeting_minutes/test_browser.py`: mocked browser navigation, year traversal, document link extraction
+- [ ] T034 [P] Implement `tests/adapters/meeting_minutes/test_pdf_parser.py`: PDF text extraction, date/title parsing, content_summary generation
+- [ ] T035 [P] Implement `tests/adapters/meeting_minutes/test_adapter.py`: integration tests for core orchestration with mocked HTTP/DB
+- [ ] T036 [P] Implement `tests/adapters/meeting_minutes/test_incremental.py`: incremental ingestion, deduplication, stop conditions
+- [ ] T037 [P] Implement `tests/adapters/meeting_minutes/test_retry.py`: retry decorator, exponential backoff, jitter behavior
+- [ ] T038 [P] Implement `tests/adapters/meeting_minutes/test_logging.py`: structured JSON log output format, run summary structure
 
 ---
 
@@ -162,7 +178,7 @@ description: "Task list for Meeting Minutes & Agendas Adapter implementation"
 - All Setup tasks marked [P] can run in parallel
 - All Foundational tasks marked [P] (T006-T009) can run in parallel
 - Within US1: T011 (browser.py) and T012 (pdf_parser.py) can run in parallel
-- Within US3: T020 (retry.py) and T021 (models.py) can run in parallel
+- Within US3: T020 (adapter.py retry integration), T021 (models.py), and T022 (persistent failure tracking) can run in parallel
 - Within US4: T024 (browser.py) and T025 (adapter.py CLI) can run in parallel
 
 ---
@@ -228,11 +244,13 @@ With multiple developers:
 | Task | Maps To | Success Criterion |
 |------|---------|-------------------|
 | T011, T012, T013 | US1 | SC-001: Single execution downloads/parses PDF, inserts valid record |
-| T015 | US1 | SC-003: Every record has non-empty `source_url` and `point_of_origin` |
+ | T015 | US1 | SC-003: Every record has non-empty `source_url` and `point_of_origin` |
+ | T015 | US1 | Ingestion Policy: Every record has `extraction_timestamp` |
 | T014 | US1 | SC-009: Structured JSON logs with per-document details and run summary |
 | T016, T017 | US2 | SC-002: Second run skips already-recorded documents |
-| T019 | US2 | SC-007: `last_run_timestamp` updated after each successful run |
-| T020, T022 | US3 | SC-004: Transient failures trigger up to 3 retries with exponential backoff |
-| T021, T022 | US3 | SC-005: Permanent failures skipped gracefully without stopping pipeline |
+| T019 | US2 | SC-007: `last_run` updated after each successful run |
+| T006, T020 | US3 | SC-004: Transient failures trigger up to 3 retries with exponential backoff |
+| T021 | US3 | SC-005: Permanent failures skipped gracefully without stopping pipeline |
+| T032-T038 | Tests | Test coverage for all user stories and shared utilities |
 | T024 | US4 | SC-006: Discovers documents from at least 3 different boards |
 | T026 | US4 | SC-008: Single run completes within 15 minutes |

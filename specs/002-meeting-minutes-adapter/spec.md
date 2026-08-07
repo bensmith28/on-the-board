@@ -49,7 +49,7 @@ This specification was derived from the following source documents:
 ### Testing Considerations
 
 - Single-execution verification: run the adapter manually to confirm PDFs are downloaded and parsed into `ingested_records`.
-- Incremental ingestion test: run the adapter twice to confirm the second run skips already-recorded documents (using `last_run_timestamp` comparison against `sources_registry`).
+- Incremental ingestion test: run the adapter twice to confirm the second run skips already-recorded documents (using `last_run` comparison against `sources_registry`).
 - Error handling test: simulate network failure and PDF parsing failure to verify `transient_failure` and `permanent_failure` signaling.
 - Evidence mapping test: confirm every ingested record has non-empty `source_url` and `point_of_origin`.
 - JavaScript rendering test: verify the headless browser correctly navigates the year selection interface and renders the full document list.
@@ -66,7 +66,7 @@ This specification was derived from the following source documents:
 ### 3.2 PDF Content Extraction
 
 - **FR-005**: The adapter MUST download each discovered PDF and parse its text content.
-- **FR-006**: The adapter MUST extract meeting dates and titles from the parsed PDF text using patterns that accommodate variable layouts across boards and years.
+- **FR-006**: The adapter MUST extract meeting dates and titles from the parsed PDF text using a multi-strategy approach: (1) regex for standard date patterns (MM/DD/YYYY, Month DD, YYYY), (2) fallback to metadata fields (Title, Date) in PDF document info, (3) heuristic extraction from first 200 lines of text for agenda-style headers. Meeting date MUST be stored as a parsed datetime; if extraction fails, `meeting_date` is null and the record is flagged for manual review.
 - **FR-007**: The adapter MUST produce a `content_summary` from the parsed text (a brief excerpt or cleaned version of the primary content).
 - **FR-008**: The adapter MUST preserve the full extracted text as `raw_text` for each record.
 
@@ -83,7 +83,7 @@ This specification was derived from the following source documents:
 
 - **FR-015**: The adapter MUST consume the `last_run_timestamp` from the orchestration `context` to determine which documents to process.
 - **FR-016**: The adapter MUST compare discovered document links against the `sources_registry` to identify new, previously unrecorded PDF links. Only new links are downloaded and processed.
-- **FR-017**: After a successful run, the adapter MUST update the `last_run_timestamp` in the `sources_registry` for the corresponding entry.
+- **FR-017**: After a successful run, the adapter MUST update the `last_run` in the `sources_registry` for the corresponding entry.
 
 ### 3.5 Error Handling & Signaling
 
@@ -94,7 +94,7 @@ This specification was derived from the following source documents:
 
 ### 3.6 Update Frequency & Scheduling
 
-- **FR-022**: The adapter MUST be configured to run on a twice-weekly schedule (Tuesday and Friday at midnight) via the orchestration engine's scheduler.
+- **FR-022**: The adapter MUST support invocation via the orchestration engine's scheduler (scheduled twice-weekly on Tuesday and Friday at midnight, per Phase 1.3).
 - **FR-023**: The adapter MUST support manual trigger invocation for ad-hoc runs (e.g., initial data load, re-ingestion).
 
 ### 3.7 Performance Constraints
@@ -121,7 +121,7 @@ This specification was derived from the following source documents:
 - **SC-004**: Transient failures (simulated network errors) trigger up to 3 automatic retries with exponential backoff before the run is marked as failed.
 - **SC-005**: Permanent failures (corrupted PDFs) are skipped gracefully without stopping the pipeline, and the failure is logged with the correct `error_type`.
 - **SC-006**: The adapter discovers and processes documents from at least 3 different boards (e.g., Town Board, Planning Board, ZBA) in a single run.
-- **SC-007**: The `sources_registry` `last_run_timestamp` is updated after each successful run.
+- **SC-007**: The `sources_registry` `last_run` is updated after each successful run.
 - **SC-008**: A single adapter run completes within 15 minutes when processing all configured boards with no transient failures.
 - **SC-009**: Every run produces structured JSON logs with per-document details and a final run summary, verifiable by inspecting stdout output.
 
@@ -144,6 +144,7 @@ This specification was derived from the following source documents:
 | `raw_text` | Text | Yes | Full unformatted text extracted from the PDF |
 | `metadata` | JSONB | Yes | Source-specific data: `board`, `agenda_link`, etc. |
 | `related_resources` | Array[Object] | Yes | Resource pointers with `source_url` and `point_of_origin` |
+| `extraction_timestamp` | String | Yes | ISO 8601 UTC timestamp of extraction |
 
 ### 5.3 Error Signal (Output)
 
@@ -176,6 +177,6 @@ This specification was derived from the following source documents:
 ## 7. Dependencies
 
 - **Phase 1.1 (Foundational Data Layer)**: Requires `ingested_records` table, `sources_registry` table, `IngestionResult` contract, and validation rules (VR-001 through VR-007) to be in place.
-- **Phase 1.3 (Orchestration Engine)**: Requires the orchestrator to trigger the adapter on schedule, provide the execution `context`, and handle retry logic for `transient_failure` errors.
+- **Phase 1.3 (Orchestration Engine)**: Responsible for scheduling adapter runs twice-weekly (Tuesday/Friday midnight). The adapter exposes a CLI entry point for the orchestrator to invoke.
 - **Phase 1.4 (API & Presentation Layer)**: Depends on ingested data from this adapter to populate the `/feed` endpoint and display activity cards.
 - **External**: CivicPlus Agenda Center at `townofvictorny.gov` must remain accessible and structurally consistent. `robots.txt` compliance must be monitored.

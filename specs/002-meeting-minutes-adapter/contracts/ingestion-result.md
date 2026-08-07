@@ -17,12 +17,13 @@ Defines the standardized output contract that all adapters must produce. This co
     "board": "<non-empty string>",
     "agenda_link": "<valid URL>"
   },
-  "related_resources": [
-    {
-      "source_url": "<non-empty valid URL>",
-      "point_of_origin": "<non-empty string>"
-    }
-  ]
+   "related_resources": [
+     {
+       "source_url": "<non-empty valid URL>",
+       "point_of_origin": "<non-empty string>"
+     }
+   ],
+   "extraction_timestamp": "<ISO 8601 UTC timestamp>"
 }
 ```
 
@@ -35,6 +36,7 @@ Defines the standardized output contract that all adapters must produce. This co
 | `raw_text` | String | Yes | Non-empty; full unformatted text extracted from the PDF |
 | `metadata` | Object | Yes | Must contain `board` (non-empty string) and `agenda_link` (valid URL) |
 | `related_resources` | Array | Yes | Non-empty; each element must contain `source_url` (non-empty valid URL) and `point_of_origin` (non-empty string) |
+| `extraction_timestamp` | String | Yes | ISO 8601 UTC timestamp of when data was extracted from the source PDF |
 
 ## Validation Rules (VR-001 through VR-007)
 
@@ -45,6 +47,7 @@ Defines the standardized output contract that all adapters must produce. This co
 5. **VR-005**: `metadata.board` is present and non-empty
 6. **VR-006**: `metadata.agenda_link` is a valid URL
 7. **VR-007**: `related_resources` is a non-empty array; each element has non-empty `source_url` and `point_of_origin`
+8. **VR-008**: `extraction_timestamp` is present and is a valid ISO 8601 UTC timestamp
 
 ## Mandatory Evidence Mapping
 

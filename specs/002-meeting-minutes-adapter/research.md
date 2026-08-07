@@ -75,12 +75,12 @@ This research document consolidates findings from the source material relevant t
 - **Circuit breaker pattern**: More complex; 3 retries is sufficient for transient network issues per the spec
 - **Orchestrator-managed retries**: The orchestrator (Phase 1.3) also handles transient_failure signaling, but the adapter should implement its own retry for in-run resilience
 
-## Decision 6: Incremental Ingestion — sources_registry last_run_timestamp
+## Decision 6: Incremental Ingestion — sources_registry last_run
 
-**Decision**: Use `last_run_timestamp` from `sources_registry` for incremental ingestion, scanning from most recent to oldest.
+**Decision**: Use `last_run` from `sources_registry` for incremental ingestion, scanning from most recent to oldest.
 
 **Rationale**:
-- The adapter MUST consume `last_run_timestamp` from the orchestration context (FR-015)
+- The adapter MUST consume `last_run` from the orchestration context (FR-015)
 - The adapter MUST compare discovered document links against `sources_registry` to identify new PDFs (FR-016)
 - Scanning from most recent to oldest and stopping after 5 consecutive already-recorded documents (FR-004) minimizes processing time
 - The 365-day maximum scan depth bounds the worst-case processing time

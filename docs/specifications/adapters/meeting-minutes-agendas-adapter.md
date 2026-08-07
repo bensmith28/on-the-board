@@ -70,11 +70,11 @@ The adapter requires a headless browser to interact with the JavaScript-driven n
 
 ### Update Frequency & Trigger
 
-The adapter will run on a **weekly schedule**. 
+The adapter will run on a **twice-weekly schedule** (Tuesday and Friday at midnight), as defined in spec.md FR-022.
 
-* **Incremental Ingestion**: To optimize resources, the adapter will use the `last_run_timestamp` from the execution `context` to compare discovered document links against the `sources_registry`. Only new, previously unrecorded PDF links will be downloaded and processed for ingestion.
-* **Scanning Scope**: On each run, the adapter will traverse the Agenda Center starting with the most recent and moving into the past, until either it discovers 5 consecutive alread-recorded documents OR a maximum of 365 days into the past.
-* **Trigger**: The run is primarily schedule-driven (twice weekly, Tuesday and Friday at midnight), ensuring that any newly posted agendas or minutes are captured within days of their publication.
+ * **Incremental Ingestion**: To optimize resources, the adapter will use the `last_run_timestamp` from the execution `context` to compare discovered document links against the `sources_registry`. Only new, previously unrecorded PDF links will be downloaded and processed for ingestion.
+ * **Scanning Scope**: On each run, the adapter will traverse the Agenda Center starting with the most recent and moving into the past, until either it discovers 5 consecutive already-recorded documents OR a maximum of 365 days into the past.
+ * **Trigger**: The run is primarily schedule-driven (Tuesday and Friday at midnight), ensuring that any newly posted agendas or minutes are captured within days of their publication.
 * **Performance Constraint**: A single adapter run (processing all configured boards) MUST complete within 15 minutes under normal conditions.
 
 ## Data Contract Mapping

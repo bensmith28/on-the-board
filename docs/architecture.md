@@ -18,7 +18,7 @@ A Python-based orchestration engine executes "Adapters" on a scheduled basis. Ea
 * **Compliance**: Every adapter must adhere to the [Ingestion Policy: Source Validation & Fact Integrity](./ingestion-policy.md), ensuring that all extracted data includes mandatory evidence mapping (Source URL, Point of Origin, etc.) and follows the standards for "Ground Truth" data types.
 * **Evolution**: Progresses from simple web scraping/PDF parsing toward LLM-driven structured extraction.
 
-###  *2. Data Store (The Hybrid Repository)
+### 2. Data Store (The Hybrid Repository)
 A central repository using **PostgreSQL** to handle both structured metadata and highly variable unstructured content.
 * **Data Modeling**: Uses a "Hybrid" approach with relational columns for stable metadata and `JSONB` for schema-on-read payloads (See `research-data-store.md` for modeling alternatives).
 * **Future Proofing**: Leverages the `pgvector` extension to support semantic search in future phases.
