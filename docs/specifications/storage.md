@@ -53,7 +53,7 @@ Every `payload` entry must contain at least these keys:
 
 ### 1. Adapter -> Storage (The Ingestion Contract)
 **Responsibility**: The Adapter layer is responsible for extraction, cleaning, and transformation into the contract format.
-* **Mechanism**: Python-based adapters execute, parse data, and perform an `INSERT` or `UPSERT` operation into `ing0_records`.
+* **Mechanism**: Python-based adapters execute, parse data, and perform an `INSERT` or `UPSERT` operation into `ingested_records`.
 * **Enforcement**: Adapvers must validate that all "Mandatory Evidence Mapping" (Source URL, Point of Origin) is present before the database write.
 
 ### 2. Backend -> Storage (The Retrieval Contract)

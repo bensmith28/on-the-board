@@ -13,7 +13,7 @@ This document outlines the phased implementation strategy for the `on-the-board`
 ### 1.2 The "Type B" Adapter (Meeting Minutes)
 - [ ] **Browser Automation**: Implement Playwright logic for navigating the CivicPlus Agenda Center JavaScript interface.
 - [ ] **Content Extraction**: Integrate `PyMuPDF` to parse PDF text and extract meeting dates/titles.
-- [ ] **Verification**: Run a single execution to confirm PDFs are downloaded and parsed into the `ing0ested_records` table.
+- [ ] **Verification**: Run a single execution to confirm PDFs are downloaded and parsed into the `ingested_records` table.
 
 ### 1.3 Orchestration Engine (MVP)
 - [ ] **Task Dispatcher**: Implement the core loop to trigger adapters based on the `sources_registry`.
