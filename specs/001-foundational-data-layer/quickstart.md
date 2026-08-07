@@ -6,39 +6,28 @@ This guide provides runnable validation scenarios to prove the Foundational Data
 
 ## Prerequisites
 
-- Docker and Docker Compose installed
-- PostgreSQL 18.x Docker image available (`postgres:18`)
+- Docker and `docker compose` installed
+- pgvector image available (`pgvector/pgvector:pg18`)
 - `pgvector` extension available for PostgreSQL 18
-- Python 3.12+ with dependencies installed (`SQLModel`, `asyncpg`, `pydantic`)
+- Python 3.12+ and `uv` installed
 - `DATABASE_URL` environment variable set to the PostgreSQL connection string
 
 ## Setup
 
-### 1. Start PostgreSQL with pgvector
+### 1. Install Python dependencies
 
 ```bash
-docker run -d \
-  --name on-the-board-db \
-  -e POSTGRES_USER=otb \
-  -e POSTGRES_PASSWORD=otb_dev \
-  -e POSTGRES_DB=on_the_board \
-  -p 5432:5432 \
-  -v pg_data:/var/lib/postgresql/data \
-  postgres:18
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
 ```
 
-### 2. Install pgvector extension
+### 2. Start PostgreSQL with pgvector
 
 ```bash
-docker exec -it on-the-board-db psql -U otb -d on_the_board -c "CREATE EXTENSION IF NOT EXISTS vector;"
+docker compose up -d
 ```
 
-### 3. Run schema migrations
-
-```bash
-# Execute migrations/001_initial_schema.sql
-psql -U otb -d on_the_board -f src/db/migrations/001_initial_schema.sql
-```
 
 ## Validation Scenarios
 
@@ -63,7 +52,7 @@ docker exec on-the-board-db psql -U otb -d on_the_board -c "\d sources_registry"
 
 **Steps**:
 ```bash
-docker exec on-the-board-db psql -U otb -d on_the_board -c "
+docker exec on-the-board-db psql -U otb -d on_the_board <<'SQL'
 INSERT INTO ingested_records (
     source_type, locality, timestamp, source_url, point_of_origin, payload
 ) VALUES (
@@ -73,29 +62,30 @@ INSERT INTO ingested_records (
     'https://townofvictorny.gov/agendas/town-board-2026-07-15.pdf',
     'Page 3',
     '{
-        \"title\": \"Town Board Meeting Minutes — July 15, 2026\",
-        \"content_summary\": \"Discussion of Q3 budget allocation.\",
-        \"raw_text\": \"Full extracted text...\",
-        \"metadata\": {\"board\": \"Town Board\", \"meeting_type\": \"Regular\"},
-        \"related_resources\": [{
-            \"source_url\": \"https://townofvictorny.gov/agendas/town-board-2026-07-15.pdf\",
-            \"point_of_origin\": \"Full Document\"
+        "title": "Town Board Meeting Minutes — July 15, 2026",
+        "content_summary": "Discussion of Q3 budget allocation.",
+        "raw_text": "Full extracted text...",
+        "metadata": {"board": "Town Board", "meeting_type": "Regular"},
+        "related_resources": [{
+            "source_url": "https://townofvictorny.gov/agendas/town-board-2026-07-15.pdf",
+            "point_of_origin": "Full Document"
         }]
     }'::jsonb
-);"
+);
+SQL
 ```
 
 **Expected**: Insert succeeds without errors.
 
 **Verify**:
 ```bash
-docker exec on-the-board-db psql -U otb -d on_the_board -c "
+docker exec on-the-board-db psql -U otb -d on_the_board <<'SQL'
 SELECT id, source_type, locality, timestamp,
        payload->>'title' as title,
        payload->'metadata' as metadata
 FROM ingested_records
-WHERE source_type = 'meeting_minutes';"
-```
+WHERE source_type = 'meeting_minutes';
+SQL
 
 **Expected**: One row returned with correct `title`, `metadata`, and all fields populated.
 
@@ -106,7 +96,7 @@ WHERE source_type = 'meeting_minutes';"
 **Steps**:
 ```bash
 # Insert duplicate record (same source_url + point_of_origin, different payload)
-docker exec on-the-board-db psql -U otb -d on_the_board -c "
+docker exec on-the-board-db psql -U otb -d on_the_board <<'SQL'
 INSERT INTO ingested_records (
     source_type, locality, timestamp, source_url, point_of_origin, payload
 ) VALUES (
@@ -116,25 +106,26 @@ INSERT INTO ingested_records (
     'https://townofvictorny.gov/agendas/town-board-2026-07-15.pdf',
     'Page 3',
     '{
-        \"title\": \"UPDATED Title\",
-        \"content_summary\": \"Updated summary.\",
-        \"raw_text\": \"Updated text.\",
-        \"metadata\": {\"board\": \"Town Board\"},
-        \"related_resources\": []
+        "title": "UPDATED Title",
+        "content_summary": "Updated summary.",
+        "raw_text": "Updated text.",
+        "metadata": {"board": "Town Board"},
+        "related_resources": []
     }'::jsonb
 ) ON CONFLICT (source_url, point_of_origin) DO UPDATE SET
     payload = EXCLUDED.payload,
-    ingestion_timestamp = now();"
+    ingestion_timestamp = now();
+SQL
 ```
 
 **Expected**: No error. Record is updated (not duplicated).
 
 **Verify**:
 ```bash
-docker exec on-the-board-db psql -U otb -d on_the_board -c "
+docker exec on-the-board-db psql -U otb -d on_the_board <<'SQL'
 SELECT COUNT(*) FROM ingested_records
-WHERE source_url = 'https://townofvictorny.gov/agendas/town-board-2026-07-15.pdf';"
-```
+WHERE source_url = 'https://townofvictorny.gov/agendas/town-board-2026-07-15.pdf';
+SQL
 
 **Expected**: `1` (not 2). The `payload->>'title'` should show `UPDATED Title`.
 
@@ -145,7 +136,7 @@ WHERE source_url = 'https://townofvictorny.gov/agendas/town-board-2026-07-15.pdf
 **Steps**:
 ```bash
 # Try inserting without point_of_origin
-docker exec on-the-board-db psql -U otb -d on_the_board -c "
+docker exec on-the-board-db psql -U otb -d on_the_board <<'SQL'
 INSERT INTO ingested_records (
     source_type, locality, timestamp, source_url, payload
 ) VALUES (
@@ -153,8 +144,9 @@ INSERT INTO ingested_records (
     'Victor, NY',
     '2026-08-01 19:00:00+00',
     'https://example.com/missing.pdf',
-    '{\"title\":\"Test\",\"content_summary\":\"Test\",\"raw_text\":\"Test\",\"metadata\":{},\"related_resources\":[]}'::jsonb
-);"
+    '{"title":"Test","content_summary":"Test","raw_text":"Test","metadata":{},"related_resources":[]}'::jsonb
+);
+SQL
 ```
 
 **Expected**: Error — `point_of_origin` is NOT NULL constraint violation.
@@ -166,26 +158,26 @@ INSERT INTO ingested_records (
 **Steps**:
 ```bash
 # Insert a test adapter entry
-docker exec on-the-board-db psql -U otb -d on_the_board -c "
+docker exec on-the-board-db psql -U otb -d on_the_board <<'SQL'
 INSERT INTO sources_registry (name, source_type, locality, config, status)
 VALUES (
     'Town Board Minutes',
     'meeting_minutes',
     'Victor, NY',
-    '{\"base_url\": \"https://townofvictorny.gov/agendas\", \"strategy\": \"playwright\"}',
+    '{"base_url": "https://townofvictorny.gov/agendas", "strategy": "playwright"}',
     'active'
 )
 ON CONFLICT (source_type) DO UPDATE SET
     updated_at = now(),
-    status = EXCLUDED.status;"
-```
+    status = EXCLUDED.status;
+SQL
 
 **Verify**:
 ```bash
-docker exec on-the-board-db psql -U otb -d on_the_board -c "
+docker exec on-the-board-db psql -U otb -d on_the_board <<'SQL'
 SELECT name, source_type, status, config FROM sources_registry
-WHERE source_type = 'meeting_minutes';"
-```
+WHERE source_type = 'meeting_minutes';
+SQL
 
 **Expected**: One row with `status = 'active'` and correct `config` JSON.
 
@@ -195,11 +187,11 @@ WHERE source_type = 'meeting_minutes';"
 
 **Steps**:
 ```bash
-docker exec on-the-board-db psql -U otb -d on_the_board -c "
+docker exec on-the-board-db psql -U otb -d on_the_board <<'SQL'
 EXPLAIN ANALYZE SELECT * FROM ingested_records
 WHERE source_type = 'meeting_minutes' AND locality = 'Victor, NY'
-ORDER BY timestamp DESC LIMIT 20;"
-```
+ORDER BY timestamp DESC LIMIT 20;
+SQL
 
 **Expected**: Query plan uses `idx_ingested_source_type_locality` composite index (Index Scan or Bitmap Index Scan), not a sequential scan.
 
@@ -224,7 +216,7 @@ record = IngestedRecord(
 )
 
 # Verify model fields match DB columns
-assert record.__fields__.keys() >= {"source_type", "locality", "timestamp", "source_url", "point_of_origin", "payload"}
+assert record.model_fields.keys() >= {"source_type", "locality", "timestamp", "source_url", "point_of_origin", "payload"}
 ```
 
 **Expected**: All assertions pass. Model fields match database columns from `data-model.md`.
@@ -232,6 +224,5 @@ assert record.__fields__.keys() >= {"source_type", "locality", "timestamp", "sou
 ## Cleanup
 
 ```bash
-docker stop on-the-board-db && docker rm on-the-board-db
-docker volume rm pg_data
+docker compose down -v
 ```

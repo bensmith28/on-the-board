@@ -149,9 +149,6 @@ ingested_records.payload.related_resources[].source_url ──► (external URL 
 Creates both tables with all columns, indexes, and constraints.
 
 ```sql
--- Enable pgvector extension
-CREATE EXTENSION IF NOT EXISTS vector;
-
 -- ingested_records table
 CREATE TABLE ingested_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -206,8 +203,7 @@ BEGIN
     ON CONFLICT (source_url, point_of_origin) DO UPDATE SET
         payload = EXCLUDED.payload,
         ingestion_timestamp = EXCLUDED.ingestion_timestamp,
-        timestamp = EXCLUDED.timestamp,
-        updated_at = now();
+        timestamp = EXCLUDED.timestamp;
 END;
 $$ LANGUAGE plpgsql;
 ```

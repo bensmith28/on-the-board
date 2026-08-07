@@ -1,9 +1,6 @@
 -- Migration 001: Initial Schema
 -- Creates ingested_records and sources_registry tables with indexes and constraints
 
--- Enable pgvector extension
-CREATE EXTENSION IF NOT EXISTS vector;
-
 -- ingested_records table
 CREATE TABLE IF NOT EXISTS ingested_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -81,7 +78,6 @@ BEGIN
     ON CONFLICT (source_url, point_of_origin) DO UPDATE SET
         payload = EXCLUDED.payload,
         ingestion_timestamp = EXCLUDED.ingestion_timestamp,
-        timestamp = EXCLUDED.timestamp,
-        updated_at = now();
+        timestamp = EXCLUDED.timestamp;
 END;
 $$ LANGUAGE plpgsql;
