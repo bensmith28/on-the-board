@@ -25,7 +25,7 @@ The `sources_registry` serves as the single source of truth for all orchestratio
 To maintain system stability and scalability, the execution strategy focuses on isolation and controlled concurrency:
 
 -   **Task Dispatching**: Adapters are executed as independent, ephemeral tasks (e.g., using a task queue or individual process spawns) to prevent a single failing adapter from impacting the entire pipeline.
--   **Concurrency Control**: The orchestrator implements limits on the number of concurrent adapter runs to prevent resource exhaustion (CPU/Memory/Network) on the host system.
+-   **Concurrency Control**: The orchestrator implements limits on the number of concurrent adapter runs to prevent resource exhaustion (CPU/Memory/Network) on the host system. Adapters for the same source MUST NOT execute concurrently; the orchestrator MUST ensure serialized execution per source via a lock or queue mechanism.
 -   **Environment Isolation**: Each adapter run is provided with a specific `context` object containing necessary environment variables, credentials (if any), and municipality-specific metadata.
 
 ## Monitoring & Observability

@@ -75,6 +75,7 @@ The adapter will run on a **weekly schedule**.
 * **Incremental Ingestion**: To optimize resources, the adapter will use the `last_run_timestamp` from the execution `context` to compare discovered document links against the `sources_registry`. Only new, previously unrecorded PDF links will be downloaded and processed for ingestion.
 * **Scanning Scope**: On each run, the adapter will traverse the Agenda Center starting with the most recent and moving into the past, until either it discovers 5 consecutive alread-recorded documents OR a maximum of 365 days into the past.
 * **Trigger**: The run is primarily schedule-driven (twice weekly, Tuesday and Friday at midnight), ensuring that any newly posted agendas or minutes are captured within days of their publication.
+* **Performance Constraint**: A single adapter run (processing all configured boards) MUST complete within 15 minutes under normal conditions.
 
 ## Data Contract Mapping
 
@@ -109,6 +110,12 @@ This adapter's output strictly adheres to the `IngestionResult` payload schema d
 ### Error Handling
 
 * **Extraction Failures (Permanent)**: If a PDF is corrupted or unreadable, it will be signaled as a `permanent_failure` with an appropriate `error_type` (e.g., `parsing_error`), and the specific record will be skipped to prevent pipeline stoppage.
-* **Network/Browser Errors (Transient)**: Playwright execution failures (e.g., timeouts) will be signaled as a `transient_failure` (e.g., `network_error`) and will trigger an automatic retry within the same run session.
+* **Network/Browser Errors (Transient)**: Playwright execution failures (e.g., timeouts) will be signaled as a `transient_failure` (e.g., `network_error`) and will trigger up to 3 retry attempts with exponential backoff within the same run session.
 * **Alerting**: Persistent failures (e.g., 3 consecutive failed runs) will trigger an alert via the Core Engine's error-handling system for manual investigation.
+
+### Monitoring & Logging
+
+* **Per-Document Logging**: For every document processed, the adapter MUST produce structured JSON log entries containing: document title, source URL, processing status (success/failure), processing duration, and any error details.
+* **Run Summary Logging**: At the end of each run, the adapter MUST log a run summary containing: total documents discovered, documents ingested, documents skipped (already recorded), documents failed, and total run duration.
+* **Log Output**: All logs MUST be written to stdout in structured JSON format, enabling log aggregation by the orchestration engine or container runtime.
 

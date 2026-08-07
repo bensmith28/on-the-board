@@ -82,3 +82,10 @@ Describe your reasoning.]
 ### Error Handling
 [Guidance: Describe how the adapter will handle failures (e.g., retry logic, alerting via the Core Engine). Explicitly map known failure modes (e.g., network timeouts, parsing errors) to either `transient_failure` or `permanent_failure` as defined in the [Orchestration Specification](./adapter-orchestration.md).]
 
+### Peformance Constraints
+
+[Document any performance constraints (e.g., maximum run duration). Absent necessary extension, a single normal adapter run should complete in 15 minutes.]
+
+### Monitoring & Logging
+[Guidance: Describe the adapter's logging strategy. Each adapter MUST produce structured JSON logs to stdout including: (1) per-document entries with title, source URL, processing status, duration, and error details; (2) a run summary with total documents discovered, ingested, skipped, failed, and total run duration. This enables log aggregation and operational monitoring by the orchestration engine.]
+
