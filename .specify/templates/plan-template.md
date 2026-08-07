@@ -10,6 +10,18 @@
 
 [Extract from feature spec: primary requirement + technical approach from research]
 
+### Source Material
+
+<!--
+  Find all relevant source material in `docs/research/*md` and `docs/specifications/**/*.md`.
+  List all source documents this plan was derived from.
+  Note any conflicts between this plan and its source material.
+-->
+
+- **[Source document name]** — [Brief description of what this source contributed]
+
+**Conflicts with source material**: [None identified / Describe any conflicts and suggested resolutions]
+
 ## Technical Context
 
 <!--

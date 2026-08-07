@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: on-the-board-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-otb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-otb_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-on_the_board}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql
+      - ./src/db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-otb} -d ${POSTGRES_DB:-on_the_board}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pg_data:

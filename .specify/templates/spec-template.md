@@ -8,6 +8,25 @@
 
 **Input**: User description: "$ARGUMENTS"
 
+## Overview
+
+<!--
+  Describe what this feature does, its goals, and its scope.
+  Write for non-technical stakeholders — focus on WHAT and WHY, not HOW.
+-->
+
+### Source Material
+
+<!--
+  Find all relevant source material in `docs/research/*md` and `docs/specifications/**/*.md`.
+  List all source documents this specification was derived from.
+  Note any conflicts between this spec and its source material.
+-->
+
+- **[Source document name]** — [Brief description of what this source contributed]
+
+**Conflicts with source material**: [None identified / Describe any conflicts and suggested resolutions]
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--
